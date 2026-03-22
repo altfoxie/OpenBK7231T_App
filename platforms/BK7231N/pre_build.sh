@@ -42,3 +42,5 @@
 BUILD_SH="sdk/OpenBK7231N/platforms/bk7231n/bk7231n_os/build.sh"
 sed -i 's/00000000 00000000 00000000 00000000 10000/00000000 00000000 d7809c3e 55001042 10000/g' "$BUILD_SH"
 sed -i 's/OpenBK7231M/OpenBL2082N_SBDV-00033/g' "$BUILD_SH"
+sed -i '/python mpytools.py bk7231n_bootloader.bin/i cp bk7231n_bootloader.bin bk7231n_bootloader_sbdv.bin\n./${ENCRYPT_NEW} -enc bk7231n_bootloader_sbdv.bin 00000000 00000000 d7809c3e 55001042 -crc' "$BUILD_SH"
+sed -i 's/python mpytools.py bk7231n_bootloader.bin/python mpytools.py bk7231n_bootloader_sbdv_enc.bin/' "$BUILD_SH"
