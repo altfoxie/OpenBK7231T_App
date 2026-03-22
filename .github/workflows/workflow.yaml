@@ -87,7 +87,7 @@ jobs:
           packages: cmake
           version: 1.0
 
-                                                                                                                                                                                                                - name: Install arm-none-eabi-gcc
+      - name: Install arm-none-eabi-gcc
         if: ${{ matrix.gcc && matrix.gcc != 'apt' }}                                                                                                                                                                                    uses: carlosperate/arm-none-eabi-gcc-action@v1
         with:
           release: ${{ matrix.gcc }}
