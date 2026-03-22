@@ -1,173 +1,174 @@
 name: Build App
 on:
-  push:
-    branches:
-      - '**'
-  pull_request:
-    branches:
-      - '**'
+    push:
+        branches:
+            - "**"
+    pull_request:
+        branches:
+            - "**"
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  APP_NAME: ${{ github.event.repository.name }}
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    APP_NAME: ${{ github.event.repository.name }}
 
 jobs:
-  refs:
-    name: Prepare CI Environment
-    runs-on: ubuntu-22.04
-    outputs:
-      sha_short: ${{ steps.refs.outputs.sha_short }}
-      short_ref: ${{ steps.refs.outputs.short_ref }}
-      version: ${{ steps.refs.outputs.version }}
-      new_release: ${{ steps.refs.outputs.new_release }}
-    steps:
-      - name: Source checkout
-        uses: actions/checkout@v4
-      - name: Semantic Release
-        id: semantic
-        if: github.ref == 'refs/heads/main' || github.ref_name == 'alpha'
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          dry_run: true
-          semantic_version: 21
-          extra_plugins: |
-            @semantic-release/changelog
-            @semantic-release/git
-            conventional-changelog-conventionalcommits@7
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Set outputs
-        id: refs
-        run: |
-          export BRANCH=${GITHUB_REF#refs/*/}
-          echo "branch: ${BRANCH}"
-          export BRANCHTRANSLATED=$(echo ${BRANCH} | tr '/' '_')
-          echo "short_ref: ${BRANCHTRANSLATED}"
-          export VERSION=""
-          if ${{ steps.semantic.outputs.new_release_published == 'true' }}; then
-            export VERSION=${{ steps.semantic.outputs.new_release_version }}
-          else
-            export VERSION=${BRANCHTRANSLATED}_$(git rev-parse --short=12 HEAD)
-          fi
-          echo "new_release=${{ steps.semantic.outputs.new_release_published }}" >> $GITHUB_OUTPUT
-          echo "short_ref=${BRANCHTRANSLATED}" >> $GITHUB_OUTPUT
-          echo "sha_short=SHA-$(git rev-parse --short=12 HEAD)" >> $GITHUB_OUTPUT
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+    refs:
+        name: Prepare CI Environment
+        runs-on: ubuntu-22.04
+        outputs:
+            sha_short: ${{ steps.refs.outputs.sha_short }}
+            short_ref: ${{ steps.refs.outputs.short_ref }}
+            version: ${{ steps.refs.outputs.version }}
+            new_release: ${{ steps.refs.outputs.new_release }}
+        steps:
+            - name: Source checkout
+              uses: actions/checkout@v4
+            - name: Semantic Release
+              id: semantic
+              if: github.ref == 'refs/heads/main' || github.ref_name == 'alpha'
+              uses: cycjimmy/semantic-release-action@v4
+              with:
+                  dry_run: true
+                  semantic_version: 21
+                  extra_plugins: |
+                      @semantic-release/changelog
+                      @semantic-release/git
+                      conventional-changelog-conventionalcommits@7
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Set outputs
+              id: refs
+              run: |
+                  export BRANCH=${GITHUB_REF#refs/*/}
+                  echo "branch: ${BRANCH}"
+                  export BRANCHTRANSLATED=$(echo ${BRANCH} | tr '/' '_')
+                  echo "short_ref: ${BRANCHTRANSLATED}"
+                  export VERSION=""
+                  if ${{ steps.semantic.outputs.new_release_published == 'true' }}; then
+                    export VERSION=${{ steps.semantic.outputs.new_release_version }}
+                  else
+                    export VERSION=${BRANCHTRANSLATED}_$(git rev-parse --short=12 HEAD)
+                  fi
+                  echo "new_release=${{ steps.semantic.outputs.new_release_published }}" >> $GITHUB_OUTPUT
+                  echo "short_ref=${BRANCHTRANSLATED}" >> $GITHUB_OUTPUT
+                  echo "sha_short=SHA-$(git rev-parse --short=12 HEAD)" >> $GITHUB_OUTPUT
+                  echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
-  build:
-    name: Build
-    needs: refs
-    runs-on: ubuntu-22.04
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - platform: OpenBK7231N
-            artifact_name: OpenBL2082N_SBDV-00033
-            variant: default
-          - platform: OpenBK7231N_ALT
-            artifact_name: OpenBL2082N_SBDV-00033_ALT
-            variant: default
-            gcc: apt
-    steps:
-      - name: Source checkout
-        uses: actions/checkout@v4
+    build:
+        name: Build
+        needs: refs
+        runs-on: ubuntu-22.04
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - platform: OpenBK7231N
+                      artifact_name: OpenBL2082N_SBDV-00033
+                      variant: default
+                    - platform: OpenBK7231N_ALT
+                      artifact_name: OpenBL2082N_SBDV-00033_ALT
+                      variant: default
+                      gcc: apt
+        steps:
+            - name: Source checkout
+              uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        if: ${{ matrix.platform == 'OpenBL602' || matrix.platform == 'OpenRTL8721DA' || matrix.platform == 'OpenRTL8720E' || matrix.platform == 'OpenRDA5981' }}
-        with:
-          python-version: '3.10'
-          architecture: 'x64'
-          cache: 'pip'
+            - uses: actions/setup-python@v5
+              if: ${{ matrix.platform == 'OpenBL602' || matrix.platform == 'OpenRTL8721DA' || matrix.platform == 'OpenRTL8720E' || matrix.platform == 'OpenRDA5981' }}
+              with:
+                  python-version: "3.10"
+                  architecture: "x64"
+                  cache: "pip"
 
-      - name: Install dependencies
-        if: ${{ matrix.platform == 'OpenLN882H' || matrix.platform == 'OpenLN8825' }}
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: cmake
-          version: 1.0
+            - name: Install dependencies
+              if: ${{ matrix.platform == 'OpenLN882H' || matrix.platform == 'OpenLN8825' }}
+              uses: awalsh128/cache-apt-pkgs-action@latest
+              with:
+                  packages: cmake
+                  version: 1.0
 
-      - name: Install arm-none-eabi-gcc
-        if: ${{ matrix.gcc && matrix.gcc != 'apt' }}                                                                                                                                                                                    uses: carlosperate/arm-none-eabi-gcc-action@v1
-        with:
-          release: ${{ matrix.gcc }}
-          path-env-var: ARM_NONE_EABI_GCC_PATH
+            - name: Install arm-none-eabi-gcc
+              if: ${{ matrix.gcc && matrix.gcc != 'apt' }}
+              uses: carlosperate/arm-none-eabi-gcc-action@v1
+              with:
+                  release: ${{ matrix.gcc }}
+                  path-env-var: ARM_NONE_EABI_GCC_PATH
 
-      - name: Install arm-none-eabi-gcc
-        if: ${{ matrix.gcc == 'apt' }}
-        run: |
-          curl -sL https://raw.githubusercontent.com/ilikenwf/apt-fast/master/quick-install.sh | sudo bash
-          sudo apt-get update
-          sudo apt-fast install -y gcc-arm-none-eabi
+            - name: Install arm-none-eabi-gcc
+              if: ${{ matrix.gcc == 'apt' }}
+              run: |
+                  curl -sL https://raw.githubusercontent.com/ilikenwf/apt-fast/master/quick-install.sh | sudo bash
+                  sudo apt-get update
+                  sudo apt-fast install -y gcc-arm-none-eabi
 
-      - run: ls -la
+            - run: ls -la
 
-      - name: Run make
-        run: make APP_VERSION=${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }} APP_NAME=${{ matrix.platform }} VARIANT="${{ matrix.variant }}" ${{ matrix.platform }}
+            - name: Run make
+              run: make APP_VERSION=${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }} APP_NAME=${{ matrix.platform }} VARIANT="${{ matrix.variant }}" ${{ matrix.platform }}
 
-      - name: Save build assets
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APP_NAME }}_${{ needs.refs.outputs.version }}_${{ matrix.artifact_name }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}
-          path: |
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_UA_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_UG_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_UG_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.img
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_QIO_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/OpenBL2082N_SBDV-00033_QIO_${{ needs.refs.outputs.version }}.bin
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/OpenBL2082N_SBDV-00033_ALT_QIO_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.rbl
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.img
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.fls
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_ota.img
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_gz.img
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_OTA.bin
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_OTA.bin.xz
-            output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_OTA.bin.xz.ota
-          if-no-files-found: warn
+            - name: Save build assets
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ env.APP_NAME }}_${{ needs.refs.outputs.version }}_${{ matrix.artifact_name }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}
+                  path: |
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_UA_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_UG_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_UG_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.img
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_QIO_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/OpenBL2082N_SBDV-00033_QIO_${{ needs.refs.outputs.version }}.bin
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/OpenBL2082N_SBDV-00033_ALT_QIO_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.rbl
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.img
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.bin
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}.fls
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_ota.img
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_gz.img
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_OTA.bin
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_OTA.bin.xz
+                      output/${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}/${{ matrix.platform }}_${{ needs.refs.outputs.version }}${{ matrix.variant != 'default' && '_' || '' }}${{ matrix.variant != 'default' && matrix.variant || '' }}_OTA.bin.xz.ota
+                  if-no-files-found: warn
 
-  merge:
-    name: Merge Artifacts
-    runs-on: ubuntu-22.04
-    needs: [refs, build]
-    #if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
-    steps:
-      - name: Merge Artifacts
-        uses: actions/upload-artifact/merge@v4
-        with:
-          name: ${{ env.APP_NAME }}_${{ needs.refs.outputs.version }}
-          #delete-merged: true
+    merge:
+        name: Merge Artifacts
+        runs-on: ubuntu-22.04
+        needs: [refs, build]
+        #if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
+        steps:
+            - name: Merge Artifacts
+              uses: actions/upload-artifact/merge@v4
+              with:
+                  name: ${{ env.APP_NAME }}_${{ needs.refs.outputs.version }}
+                  #delete-merged: true
 
-  release:
-    name: Semantic Release Images and Artifacts
-    runs-on: ubuntu-22.04
-    needs: [merge, refs]
-    if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
-    steps:
-      - name: Source checkout
-        uses: actions/checkout@v4
-      - name: Fetch build assets
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ env.APP_NAME }}_${{ needs.refs.outputs.version }}
-          path: output/${{ needs.refs.outputs.version }}
-      - name: Run Semantic Release
-        id: semantic
-        uses: cycjimmy/semantic-release-action@v4
-        with:
-          dry_run: false
-          semantic_version: 21
-          extra_plugins: |
-            @semantic-release/changelog
-            @semantic-release/git
-            conventional-changelog-conventionalcommits@7
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Echo Semantic Release Versions
-        if: steps.semantic.outputs.new_release_published == 'true'
-        run: |
-          echo ${{ steps.semantic.outputs.new_release_version }}
-          echo ${{ steps.semantic.outputs.new_release_major_version }}
-          echo ${{ steps.semantic.outputs.new_release_minor_version }}
-          echo ${{ steps.semantic.outputs.new_release_patch_version }}
+    release:
+        name: Semantic Release Images and Artifacts
+        runs-on: ubuntu-22.04
+        needs: [merge, refs]
+        if: always() && needs.refs.outputs.new_release == 'true' && (github.ref == 'refs/heads/main' || github.ref_name == 'alpha')
+        steps:
+            - name: Source checkout
+              uses: actions/checkout@v4
+            - name: Fetch build assets
+              uses: actions/download-artifact@v4
+              with:
+                  name: ${{ env.APP_NAME }}_${{ needs.refs.outputs.version }}
+                  path: output/${{ needs.refs.outputs.version }}
+            - name: Run Semantic Release
+              id: semantic
+              uses: cycjimmy/semantic-release-action@v4
+              with:
+                  dry_run: false
+                  semantic_version: 21
+                  extra_plugins: |
+                      @semantic-release/changelog
+                      @semantic-release/git
+                      conventional-changelog-conventionalcommits@7
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - name: Echo Semantic Release Versions
+              if: steps.semantic.outputs.new_release_published == 'true'
+              run: |
+                  echo ${{ steps.semantic.outputs.new_release_version }}
+                  echo ${{ steps.semantic.outputs.new_release_major_version }}
+                  echo ${{ steps.semantic.outputs.new_release_minor_version }}
+                  echo ${{ steps.semantic.outputs.new_release_patch_version }}
