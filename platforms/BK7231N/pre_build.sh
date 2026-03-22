@@ -39,3 +39,6 @@
 #
 # patch -p 1 -d sdk/OpenBK7231N < platforms/BK7231N/my_change.diff
 
+BUILD_SH="sdk/OpenBK7231N/platforms/bk7231n/bk7231n_os/build.sh"
+sed -i 's/00000000 00000000 00000000 00000000 10000/00000000 00000000 d7809c3e 55001042 10000/g' "$BUILD_SH"
+sed -i 's/OpenBK7231M/OpenBL2082N_SBDV-00033/g' "$BUILD_SH"
